@@ -20,11 +20,21 @@ required-features = ["pem"]
 
 [dependencies]
 yasna = { version = "0.5", features = ["time", "std"] }
-ring = "0.16"
 pem = { version = "1.0", optional = true }
 time = { version = "0.3", default-features = false }
-x509-parser = { version = "0.13", features = ["verify"], optional = true }
 zeroize = { version = "1.2", optional = true }
+
+[dependencies.ring]
+git = "https://github.com/briansmith/ring.git"
+rev = "0f3bf003"
+# requires the latest version to have Ed25519 support on WASM
+features = ["wasm32_unknown_unknown_js"]
+
+[dependencies.x509-parser]
+git = "https://github.com/wireapp/x509-parser"
+branch = "master"
+features = ["verify"]
+optional = true
 
 [features]
 default = ["pem"]
@@ -33,8 +43,8 @@ default = ["pem"]
 features = ["x509-parser"]
 
 [dev-dependencies]
+rcgen = { path = ".", features = ["x509-parser"] }
 openssl = "0.10"
-x509-parser = { version = "0.13", features = ["verify"] }
 webpki = { version = "0.22", features = ["std"] }
 botan = { version = "0.8", features = ["vendored"] }
 rand = "0.8"
