@@ -46,7 +46,6 @@ features = ["x509-parser"]
 rcgen = { path = ".", features = ["x509-parser"] }
 openssl = "0.10"
 webpki = { version = "0.22", features = ["std"] }
-botan = { version = "0.8", features = ["vendored"] }
 rand = "0.8"
 rsa = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
