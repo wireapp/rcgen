@@ -4,17 +4,25 @@ use rcgen::{Certificate, KeyPair, RcgenError};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+use wasm_bindgen_test::*;
+
+wasm_bindgen_test_configure!(run_in_browser);
+
 fn generate_hash<T: Hash>(subject: &T) -> u64 {
     let mut hasher = DefaultHasher::new();
     subject.hash(&mut hasher);
     hasher.finish()
 }
 
+#[wasm_bindgen_test]
 #[test]
 fn test_key_params_mismatch() {
     let available_key_params = [
+        #[cfg(not(target_family = "wasm"))]
         &rcgen::PKCS_RSA_SHA256,
+        #[cfg(not(target_family = "wasm"))]
         &rcgen::PKCS_ECDSA_P256_SHA256,
+        #[cfg(not(target_family = "wasm"))]
         &rcgen::PKCS_ECDSA_P384_SHA384,
         &rcgen::PKCS_ED25519,
     ];

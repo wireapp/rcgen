@@ -48,6 +48,7 @@ webpki = { version = "0.22", features = ["std"] }
 rand = "0.8"
 rsa = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
+wasm-bindgen-test = "0.3"
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
 openssl = "0.10"

@@ -16,6 +16,11 @@ use std::convert::TryFrom;
 
 mod util;
 
+use wasm_bindgen_test::*;
+
+wasm_bindgen_test_configure!(run_in_browser);
+
+#[cfg(not(target_family = "wasm"))]
 fn sign_msg_ecdsa(cert: &Certificate, msg: &[u8], alg: &'static EcdsaSigningAlgorithm) -> Vec<u8> {
     let pk_der = cert.serialize_private_key_der();
     let key_pair = EcdsaKeyPair::from_pkcs8(&alg, &pk_der, &SystemRandom::new()).unwrap();
@@ -31,6 +36,7 @@ fn sign_msg_ed25519(cert: &Certificate, msg: &[u8]) -> Vec<u8> {
     signature.as_ref().to_vec()
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn sign_msg_rsa(cert: &Certificate, msg: &[u8], encoding: &'static dyn RsaEncoding) -> Vec<u8> {
     let pk_der = cert.serialize_private_key_der();
     let key_pair = ring::rsa::KeyPair::from_pkcs8(&pk_der).unwrap();
@@ -68,10 +74,13 @@ fn check_cert_ca<'a, 'b>(
     // Set time to Jan 10, 2004
     let time = Time::from_seconds_since_unix_epoch(0x40_00_00_00);
 
-    // (1/3) Check whether the cert is valid
-    end_entity_cert
-        .verify_is_valid_tls_server_cert(&[&cert_alg, &ca_alg], &trust_anchors, &[], time)
-        .expect("valid TLS server cert");
+    #[cfg(not(target_family = "wasm"))]
+    {
+        // (1/3) Check whether the cert is valid
+        end_entity_cert
+            .verify_is_valid_tls_server_cert(&[&cert_alg, &ca_alg], &trust_anchors, &[], time)
+            .expect("valid TLS server cert");
+    }
 
     // (2/3) Check that the cert is valid for the given DNS name
     let dns_name = DnsNameRef::try_from_ascii_str("crabs.crabs").unwrap();
@@ -79,14 +88,18 @@ fn check_cert_ca<'a, 'b>(
         .verify_is_valid_for_dns_name(dns_name)
         .expect("valid for DNS name");
 
-    // (3/3) Check that a message signed by the cert is valid.
-    let msg = b"Hello, World! This message is signed.";
-    let signature = sign_fn(&cert, msg);
-    end_entity_cert
-        .verify_signature(&cert_alg, msg, &signature)
-        .expect("signature is valid");
+    #[cfg(not(target_family = "wasm"))]
+    {
+        // (3/3) Check that a message signed by the cert is valid.
+        let msg = b"Hello, World! This message is signed.";
+        let signature = sign_fn(&cert, msg);
+        end_entity_cert
+            .verify_signature(&cert_alg, msg, &signature)
+            .expect("signature is valid");
+    }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki() {
     let params = util::default_params();
@@ -99,6 +112,7 @@ fn test_webpki() {
     check_cert(&cert_der, &cert, &webpki::ECDSA_P256_SHA256, sign_fn);
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_256() {
     let mut params = util::default_params();
@@ -113,6 +127,7 @@ fn test_webpki_256() {
     check_cert(&cert_der, &cert, &webpki::ECDSA_P256_SHA256, sign_fn);
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_384() {
     let mut params = util::default_params();
@@ -127,6 +142,7 @@ fn test_webpki_384() {
     check_cert(&cert_der, &cert, &webpki::ECDSA_P384_SHA384, sign_fn);
 }
 
+#[wasm_bindgen_test]
 #[test]
 fn test_webpki_25519() {
     let mut params = util::default_params();
@@ -140,6 +156,7 @@ fn test_webpki_25519() {
     check_cert(&cert_der, &cert, &webpki::ED25519, &sign_msg_ed25519);
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_25519_v1_given() {
     let mut params = util::default_params();
@@ -156,6 +173,7 @@ fn test_webpki_25519_v1_given() {
     check_cert(&cert_der, &cert, &webpki::ED25519, &sign_msg_ed25519);
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_25519_v2_given() {
     let mut params = util::default_params();
@@ -172,6 +190,7 @@ fn test_webpki_25519_v2_given() {
     check_cert(&cert_der, &cert, &webpki::ED25519, &sign_msg_ed25519);
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_rsa_given() {
     let mut params = util::default_params();
@@ -193,6 +212,7 @@ fn test_webpki_rsa_given() {
     );
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_rsa_combinations_given() {
     let configs: &[(_, _, &'static dyn signature::RsaEncoding)] = &[
@@ -230,6 +250,7 @@ fn test_webpki_rsa_combinations_given() {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_separate_ca() {
     let mut params = util::default_params();
@@ -260,6 +281,7 @@ fn test_webpki_separate_ca() {
     );
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_separate_ca_with_other_signing_alg() {
     let mut params = util::default_params();
@@ -291,6 +313,7 @@ fn test_webpki_separate_ca_with_other_signing_alg() {
     );
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn from_remote() {
     struct Remote(EcdsaKeyPair);
@@ -383,6 +406,7 @@ fn test_webpki_separate_ca_name_constraints() {
 */
 
 #[cfg(feature = "x509-parser")]
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_imported_ca() {
     use std::convert::TryInto;
@@ -422,6 +446,7 @@ fn test_webpki_imported_ca() {
 }
 
 #[cfg(feature = "x509-parser")]
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_webpki_imported_ca_with_printable_string() {
     use std::convert::TryInto;
@@ -465,6 +490,7 @@ fn test_webpki_imported_ca_with_printable_string() {
 }
 
 #[cfg(feature = "x509-parser")]
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn test_certificate_from_csr() {
     let mut params = CertificateParams::new(vec!["crabs.crabs".to_string()]);
