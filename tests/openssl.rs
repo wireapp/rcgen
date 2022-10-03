@@ -1,3 +1,5 @@
+#![cfg(not(target_family = "wasm"))]
+
 use openssl::pkey::PKey;
 use openssl::ssl::{HandshakeError, SslAcceptor, SslConnector, SslMethod};
 use openssl::stack::Stack;

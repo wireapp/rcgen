@@ -44,11 +44,13 @@ features = ["x509-parser"]
 
 [dev-dependencies]
 rcgen = { path = ".", features = ["x509-parser"] }
-openssl = "0.10"
 webpki = { version = "0.22", features = ["std"] }
 rand = "0.8"
 rsa = "0.5"
 getrandom = { version = "0.2", features = ["js"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
+openssl = "0.10"
 
 # This greatly speeds up rsa key generation times
 # (only applies to the dev-dependency because cargo
