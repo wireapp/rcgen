@@ -49,6 +49,7 @@ webpki = { version = "0.22", features = ["std"] }
 botan = { version = "0.8", features = ["vendored"] }
 rand = "0.8"
 rsa = "0.5"
+getrandom = { version = "0.2", features = ["js"] }
 
 # This greatly speeds up rsa key generation times
 # (only applies to the dev-dependency because cargo
