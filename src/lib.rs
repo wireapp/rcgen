@@ -34,8 +34,10 @@ println!("{}", cert.serialize_private_key_pem());
 use pem::Pem;
 use ring::digest;
 use ring::rand::SystemRandom;
+#[cfg(not(target_family = "wasm"))]
+use ring::signature::EcdsaSigningAlgorithm;
 use ring::signature::KeyPair as RingKeyPair;
-use ring::signature::{self, EcdsaSigningAlgorithm, EdDSAParameters};
+use ring::signature::{self, EdDSAParameters};
 use ring::signature::{EcdsaKeyPair, Ed25519KeyPair, RsaEncoding};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -112,8 +114,11 @@ const OID_ORG_UNIT_NAME: &[u64] = &[2, 5, 4, 11];
 const OID_COMMON_NAME: &[u64] = &[2, 5, 4, 3];
 
 // https://tools.ietf.org/html/rfc5480#section-2.1.1
+#[cfg(not(target_family = "wasm"))]
 const OID_EC_PUBLIC_KEY: &[u64] = &[1, 2, 840, 10045, 2, 1];
+#[cfg(not(target_family = "wasm"))]
 const OID_EC_SECP_256_R1: &[u64] = &[1, 2, 840, 10045, 3, 1, 7];
+#[cfg(not(target_family = "wasm"))]
 const OID_EC_SECP_384_R1: &[u64] = &[1, 3, 132, 0, 34];
 
 // rsaEncryption in RFC 4055
@@ -557,13 +562,13 @@ impl CertificateSigningRequest {
             .1;
         csr.verify_signature()
             .map_err(|_| RcgenError::RingUnspecified)?;
-		// FIXME: we are simplifying here (because we only need Ed25519 for the moment)
+        // FIXME: we are simplifying here (because we only need Ed25519 for the moment)
         let alg = &PKCS_ED25519;
-		// the reason is that the original code ⬇️ fails on WASM
-		/*let alg_oid = csr.signature_algorithm.algorithm.iter()
-			.ok_or(RcgenError::CouldNotParseCertificationRequest)?
-			.collect::<Vec<_>>();
-		let alg = SignatureAlgorithm::from_oid(&alg_oid)?;*/
+        // the reason is that the original code ⬇️ fails on WASM
+        /*let alg_oid = csr.signature_algorithm.algorithm.iter()
+            .ok_or(RcgenError::CouldNotParseCertificationRequest)?
+            .collect::<Vec<_>>();
+        let alg = SignatureAlgorithm::from_oid(&alg_oid)?;*/
 
         let info = &csr.certification_request_info;
         let mut params = CertificateParams::default();
@@ -648,8 +653,8 @@ impl Default for CertificateParams {
         let mut distinguished_name = DistinguishedName::new();
         distinguished_name.push(DnType::CommonName, "rcgen self signed cert");
         CertificateParams {
-			// FIXME: we are simplifying here (because we only need Ed25519 for the moment)
-			// the reason is that the original code `&PKCS_ECDSA_P256_SHA256` fails on WASM
+            // FIXME: we are simplifying here (because we only need Ed25519 for the moment)
+            // the reason is that the original code `&PKCS_ECDSA_P256_SHA256` fails on WASM
             alg: &PKCS_ED25519,
             not_before,
             not_after,
@@ -1461,6 +1466,7 @@ impl Certificate {
 }
 
 enum SignAlgo {
+    #[cfg(not(target_family = "wasm"))]
     EcDsa(&'static EcdsaSigningAlgorithm),
     EdDsa(&'static EdDSAParameters),
     Rsa(),
@@ -1563,67 +1569,113 @@ impl KeyPair {
     ) -> Result<Self, RcgenError> {
         let pkcs8_vec = pkcs8.to_vec();
 
-        let kind = if alg == &PKCS_ED25519 {
-            KeyPairKind::Ed(Ed25519KeyPair::from_pkcs8_maybe_unchecked(pkcs8)?)
-        } else if alg == &PKCS_ECDSA_P256_SHA256 {
-            KeyPairKind::Ec(EcdsaKeyPair::from_pkcs8(
-                &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
-                pkcs8,
-                &SystemRandom::new(),
-            )?)
-        } else if alg == &PKCS_ECDSA_P384_SHA384 {
-            KeyPairKind::Ec(EcdsaKeyPair::from_pkcs8(
-                &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
-                pkcs8,
-                &SystemRandom::new(),
-            )?)
-        } else if alg == &PKCS_RSA_SHA256 {
-            let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
-            KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA256)
-        } else if alg == &PKCS_RSA_SHA384 {
-            let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
-            KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA384)
-        } else if alg == &PKCS_RSA_SHA512 {
-            let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
-            KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA512)
-        } else if alg == &PKCS_RSA_PSS_SHA256 {
-            let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
-            KeyPairKind::Rsa(rsakp, &signature::RSA_PSS_SHA256)
-        } else {
-            panic!("Unknown SignatureAlgorithm specified!");
-        };
+        #[cfg(not(target_family = "wasm"))]
+        {
+            let kind = if alg == &PKCS_ED25519 {
+                KeyPairKind::Ed(Ed25519KeyPair::from_pkcs8_maybe_unchecked(pkcs8)?)
+            } else if alg == &PKCS_ECDSA_P256_SHA256 {
+                KeyPairKind::Ec(EcdsaKeyPair::from_pkcs8(
+                    &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                    pkcs8,
+                    &SystemRandom::new(),
+                )?)
+            } else if alg == &PKCS_ECDSA_P384_SHA384 {
+                KeyPairKind::Ec(EcdsaKeyPair::from_pkcs8(
+                    &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                    pkcs8,
+                    &SystemRandom::new(),
+                )?)
+            } else if alg == &PKCS_RSA_SHA256 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA256)
+            } else if alg == &PKCS_RSA_SHA384 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA384)
+            } else if alg == &PKCS_RSA_SHA512 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA512)
+            } else if alg == &PKCS_RSA_PSS_SHA256 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PSS_SHA256)
+            } else {
+                panic!("Unknown SignatureAlgorithm specified!");
+            };
+            Ok(KeyPair {
+                kind,
+                alg,
+                serialized_der: pkcs8_vec,
+            })
+        }
 
-        Ok(KeyPair {
-            kind,
-            alg,
-            serialized_der: pkcs8_vec,
-        })
+        #[cfg(target_family = "wasm")]
+        {
+            let kind = if alg == &PKCS_ED25519 {
+                KeyPairKind::Ed(Ed25519KeyPair::from_pkcs8_maybe_unchecked(pkcs8)?)
+            } else if alg == &PKCS_RSA_SHA256 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA256)
+            } else if alg == &PKCS_RSA_SHA384 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA384)
+            } else if alg == &PKCS_RSA_SHA512 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA512)
+            } else if alg == &PKCS_RSA_PSS_SHA256 {
+                let rsakp = RsaKeyPair::from_pkcs8(pkcs8)?;
+                KeyPairKind::Rsa(rsakp, &signature::RSA_PSS_SHA256)
+            } else {
+                panic!("Unknown SignatureAlgorithm specified!");
+            };
+            Ok(KeyPair {
+                kind,
+                alg,
+                serialized_der: pkcs8_vec,
+            })
+        }
     }
 
     fn from_raw(pkcs8: &[u8]) -> Result<(KeyPairKind, &'static SignatureAlgorithm), RcgenError> {
-        let (kind, alg) = if let Ok(edkp) = Ed25519KeyPair::from_pkcs8_maybe_unchecked(pkcs8) {
-            (KeyPairKind::Ed(edkp), &PKCS_ED25519)
-        } else if let Ok(eckp) = EcdsaKeyPair::from_pkcs8(
-            &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
-            pkcs8,
-            &SystemRandom::new(),
-        ) {
-            (KeyPairKind::Ec(eckp), &PKCS_ECDSA_P256_SHA256)
-        } else if let Ok(eckp) = EcdsaKeyPair::from_pkcs8(
-            &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
-            pkcs8,
-            &SystemRandom::new(),
-        ) {
-            (KeyPairKind::Ec(eckp), &PKCS_ECDSA_P384_SHA384)
-        } else if let Ok(rsakp) = RsaKeyPair::from_pkcs8(pkcs8) {
-            (
-                KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA256),
-                &PKCS_RSA_SHA256,
-            )
-        } else {
-            return Err(RcgenError::CouldNotParseKeyPair);
-        };
-        Ok((kind, alg))
+        #[cfg(not(target_family = "wasm"))]
+        {
+            let (kind, alg) = if let Ok(edkp) = Ed25519KeyPair::from_pkcs8_maybe_unchecked(pkcs8) {
+                (KeyPairKind::Ed(edkp), &PKCS_ED25519)
+            } else if let Ok(eckp) = EcdsaKeyPair::from_pkcs8(
+                &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                pkcs8,
+                &SystemRandom::new(),
+            ) {
+                (KeyPairKind::Ec(eckp), &PKCS_ECDSA_P256_SHA256)
+            } else if let Ok(eckp) = EcdsaKeyPair::from_pkcs8(
+                &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                pkcs8,
+                &SystemRandom::new(),
+            ) {
+                (KeyPairKind::Ec(eckp), &PKCS_ECDSA_P384_SHA384)
+            } else if let Ok(rsakp) = RsaKeyPair::from_pkcs8(pkcs8) {
+                (
+                    KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA256),
+                    &PKCS_RSA_SHA256,
+                )
+            } else {
+                return Err(RcgenError::CouldNotParseKeyPair);
+            };
+            Ok((kind, alg))
+        }
+
+        #[cfg(target_family = "wasm")]
+        {
+            let (kind, alg) = if let Ok(edkp) = Ed25519KeyPair::from_pkcs8_maybe_unchecked(pkcs8) {
+                (KeyPairKind::Ed(edkp), &PKCS_ED25519)
+            } else if let Ok(rsakp) = RsaKeyPair::from_pkcs8(pkcs8) {
+                (
+                    KeyPairKind::Rsa(rsakp, &signature::RSA_PKCS1_SHA256),
+                    &PKCS_RSA_SHA256,
+                )
+            } else {
+                return Err(RcgenError::CouldNotParseKeyPair);
+            };
+            Ok((kind, alg))
+        }
     }
 }
 
@@ -1775,6 +1827,7 @@ impl KeyPair {
     pub fn generate(alg: &'static SignatureAlgorithm) -> Result<Self, RcgenError> {
         let system_random = SystemRandom::new();
         match alg.sign_alg {
+            #[cfg(not(target_family = "wasm"))]
             SignAlgo::EcDsa(sign_alg) => {
                 let key_pair_doc = EcdsaKeyPair::generate_pkcs8(sign_alg, &system_random)?;
                 let key_pair_serialized = key_pair_doc.as_ref().to_vec();
@@ -1945,22 +1998,42 @@ pub struct SignatureAlgorithm {
 
 impl fmt::Debug for SignatureAlgorithm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self == &PKCS_RSA_SHA256 {
-            write!(f, "PKCS_RSA_SHA256")
-        } else if self == &PKCS_RSA_SHA384 {
-            write!(f, "PKCS_RSA_SHA384")
-        } else if self == &PKCS_RSA_SHA512 {
-            write!(f, "PKCS_RSA_SHA512")
-        } else if self == &PKCS_RSA_PSS_SHA256 {
-            write!(f, "PKCS_RSA_PSS_SHA256")
-        } else if self == &PKCS_ECDSA_P256_SHA256 {
-            write!(f, "PKCS_ECDSA_P256_SHA256")
-        } else if self == &PKCS_ECDSA_P384_SHA384 {
-            write!(f, "PKCS_ECDSA_P384_SHA384")
-        } else if self == &PKCS_ED25519 {
-            write!(f, "PKCS_ED25519")
-        } else {
-            write!(f, "Unknown")
+        #[cfg(not(target_family = "wasm"))]
+        {
+            if self == &PKCS_RSA_SHA256 {
+                write!(f, "PKCS_RSA_SHA256")
+            } else if self == &PKCS_RSA_SHA384 {
+                write!(f, "PKCS_RSA_SHA384")
+            } else if self == &PKCS_RSA_SHA512 {
+                write!(f, "PKCS_RSA_SHA512")
+            } else if self == &PKCS_RSA_PSS_SHA256 {
+                write!(f, "PKCS_RSA_PSS_SHA256")
+            } else if self == &PKCS_ECDSA_P256_SHA256 {
+                write!(f, "PKCS_ECDSA_P256_SHA256")
+            } else if self == &PKCS_ECDSA_P384_SHA384 {
+                write!(f, "PKCS_ECDSA_P384_SHA384")
+            } else if self == &PKCS_ED25519 {
+                write!(f, "PKCS_ED25519")
+            } else {
+                write!(f, "Unknown")
+            }
+        }
+
+        #[cfg(target_family = "wasm")]
+        {
+            if self == &PKCS_RSA_SHA256 {
+                write!(f, "PKCS_RSA_SHA256")
+            } else if self == &PKCS_RSA_SHA384 {
+                write!(f, "PKCS_RSA_SHA384")
+            } else if self == &PKCS_RSA_SHA512 {
+                write!(f, "PKCS_RSA_SHA512")
+            } else if self == &PKCS_RSA_PSS_SHA256 {
+                write!(f, "PKCS_RSA_PSS_SHA256")
+            } else if self == &PKCS_ED25519 {
+                write!(f, "PKCS_ED25519")
+            } else {
+                write!(f, "Unknown")
+            }
         }
     }
 }
@@ -1984,11 +2057,16 @@ impl Hash for SignatureAlgorithm {
 impl SignatureAlgorithm {
     fn iter() -> std::slice::Iter<'static, &'static SignatureAlgorithm> {
         static ALGORITHMS: &[&SignatureAlgorithm] = &[
+            #[cfg(not(target_family = "wasm"))]
             &PKCS_RSA_SHA256,
+            #[cfg(not(target_family = "wasm"))]
             &PKCS_RSA_SHA384,
+            #[cfg(not(target_family = "wasm"))]
             &PKCS_RSA_SHA512,
             //&PKCS_RSA_PSS_SHA256,
+            #[cfg(not(target_family = "wasm"))]
             &PKCS_ECDSA_P256_SHA256,
+            #[cfg(not(target_family = "wasm"))]
             &PKCS_ECDSA_P384_SHA384,
             &PKCS_ED25519,
         ];
@@ -2054,6 +2132,7 @@ static PKCS_RSA_PSS_SHA256: SignatureAlgorithm = SignatureAlgorithm {
 };
 
 /// ECDSA signing using the P-256 curves and SHA-256 hashing as per [RFC 5758](https://tools.ietf.org/html/rfc5758#section-3.2)
+#[cfg(not(target_family = "wasm"))]
 pub static PKCS_ECDSA_P256_SHA256: SignatureAlgorithm = SignatureAlgorithm {
     oids_sign_alg: &[&OID_EC_PUBLIC_KEY, &OID_EC_SECP_256_R1],
     sign_alg: SignAlgo::EcDsa(&signature::ECDSA_P256_SHA256_ASN1_SIGNING),
@@ -2063,6 +2142,7 @@ pub static PKCS_ECDSA_P256_SHA256: SignatureAlgorithm = SignatureAlgorithm {
 };
 
 /// ECDSA signing using the P-384 curves and SHA-384 hashing as per [RFC 5758](https://tools.ietf.org/html/rfc5758#section-3.2)
+#[cfg(not(target_family = "wasm"))]
 pub static PKCS_ECDSA_P384_SHA384: SignatureAlgorithm = SignatureAlgorithm {
     oids_sign_alg: &[&OID_EC_PUBLIC_KEY, &OID_EC_SECP_384_R1],
     sign_alg: SignAlgo::EcDsa(&signature::ECDSA_P384_SHA384_ASN1_SIGNING),
@@ -2185,6 +2265,10 @@ mod tests {
 
     use std::panic::catch_unwind;
 
+    use wasm_bindgen_test::*;
+
+    wasm_bindgen_test_configure!(run_in_browser);
+
     fn get_times() -> [OffsetDateTime; 2] {
         let dt_nanos = {
             let date = Date::from_calendar_date(2020, Month::December, 3).unwrap();
@@ -2216,6 +2300,7 @@ mod tests {
         }
     }
 
+    #[wasm_bindgen_test]
     #[test]
     fn test_dt_to_generalized() {
         let times = get_times();
@@ -2225,6 +2310,7 @@ mod tests {
         }
     }
 
+    #[wasm_bindgen_test]
     #[test]
     fn test_with_key_usages() {
         let mut params: CertificateParams = Default::default();
@@ -2269,6 +2355,7 @@ mod tests {
         assert!(found);
     }
 
+    #[wasm_bindgen_test]
     #[test]
     fn test_with_key_usages_decipheronly_only() {
         let mut params: CertificateParams = Default::default();
@@ -2309,6 +2396,7 @@ mod tests {
         assert!(found);
     }
 
+    #[wasm_bindgen_test]
     #[test]
     fn signature_algos_different() {
         // TODO unify this with test_key_params_mismatch.

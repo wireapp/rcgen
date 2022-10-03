@@ -1,14 +1,19 @@
 #![allow(clippy::complexity, clippy::style, clippy::pedantic)]
 
-use rand::rngs::OsRng;
-use rsa::pkcs8::ToPrivateKey;
-use rsa::RsaPrivateKey;
-
-use rcgen::{date_time_ymd, Certificate, CertificateParams, DistinguishedName};
-use std::convert::TryFrom;
-use std::fs;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    example()
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn example() -> Result<(), Box<dyn std::error::Error>> {
+    use rand::rngs::OsRng;
+    use rsa::pkcs8::ToPrivateKey;
+    use rsa::RsaPrivateKey;
+
+    use rcgen::{date_time_ymd, Certificate, CertificateParams, DistinguishedName};
+    use std::convert::TryFrom;
+    use std::fs;
+
     let mut params: CertificateParams = Default::default();
     params.not_before = date_time_ymd(2021, 05, 19);
     params.not_after = date_time_ymd(4096, 01, 01);
@@ -40,4 +45,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     fs::write("certs/key.der", &cert.serialize_private_key_der())?;
     Ok(())
+}
+
+#[cfg(target_family = "wasm")]
+fn example() -> Result<(), Box<dyn std::error::Error>> {
+    panic!("WASM is not supported");
 }
