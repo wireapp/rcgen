@@ -32,9 +32,9 @@ features = ["wasm32_unknown_unknown_js"]
 
 [dependencies.x509-parser]
 git = "https://github.com/wireapp/x509-parser"
-tag = "v1.0.1-pre.core-crypto-0.5.0"
-features = ["verify"]
+tag = "v1.0.2-pre.core-crypto-0.6.0"
 optional = true
+features = ["verify"]
 
 [features]
 default = ["pem"]

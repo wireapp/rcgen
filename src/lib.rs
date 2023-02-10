@@ -461,8 +461,6 @@ impl DistinguishedName {
 
     #[cfg(feature = "x509-parser")]
     fn from_name(name: &x509_parser::x509::X509Name) -> Result<Self, RcgenError> {
-        use x509_parser::der_parser::der::DerObjectContent;
-
         let mut dn = DistinguishedName::new();
         for rdn in name.iter() {
             let mut rdn_iter = rdn.iter();
@@ -483,15 +481,17 @@ impl DistinguishedName {
                 .iter()
                 .ok_or(RcgenError::CouldNotParseCertificate)?;
             let dn_type = DnType::from_oid(&attr_type_oid.collect::<Vec<_>>());
-            let dn_value = match attr.attr_value().content {
-                DerObjectContent::T61String(s) => DnValue::TeletexString(s.into()),
-                DerObjectContent::PrintableString(s) => DnValue::PrintableString(s.into()),
-                DerObjectContent::UniversalString(s) => DnValue::UniversalString(s.into()),
-                DerObjectContent::UTF8String(s) => DnValue::Utf8String(s.into()),
-                DerObjectContent::BmpString(s) => DnValue::BmpString(s.into()),
+
+            // we had a nice static pattern matching and then... (sigh)
+            let any = attr.attr_value();
+            let dn_value = match any.tag().0 {
+                20 => DnValue::TeletexString(any.data.into()),
+                19 => DnValue::PrintableString(String::from_utf8(any.data.to_vec()).unwrap()),
+                28 => DnValue::UniversalString(any.data.into()),
+                12 => DnValue::Utf8String(String::from_utf8(any.data.to_vec()).unwrap()),
+                30 => DnValue::BmpString(any.data.into()),
                 _ => return Err(RcgenError::CouldNotParseCertificate),
             };
-
             dn.push(dn_type, dn_value);
         }
         Ok(dn)
