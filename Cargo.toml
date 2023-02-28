@@ -26,7 +26,7 @@ zeroize = { version = "1.2", optional = true }
 
 [dependencies.ring]
 git = "https://github.com/briansmith/ring.git"
-rev = "450ada28"
+rev = "95948b39"
 # requires the latest version to have Ed25519 support on WASM
 features = ["wasm32_unknown_unknown_js"]
 
