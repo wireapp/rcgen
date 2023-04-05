@@ -519,8 +519,10 @@ impl<'a> Iterator for DistinguishedNameIterator<'a> {
 /// A public key, extracted from a CSR
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct PublicKey {
-    raw: Vec<u8>,
-    alg: &'static SignatureAlgorithm,
+    /// Raw key
+    pub raw: Vec<u8>,
+    /// Algorithm
+    pub alg: &'static SignatureAlgorithm,
 }
 
 impl PublicKeyData for PublicKey {
